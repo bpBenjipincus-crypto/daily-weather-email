@@ -13,20 +13,22 @@ jobs:
         env:
           RESEND_API_KEY: ${{ secrets.RESEND_API_KEY }}
         run: |
-          python3 - <<'PYEOF'
-          import urllib.request, json, os
-          from datetime import datetime
+          cat > weather.py << 'PYEOF'
+import urllib.request, json, os
+from datetime import datetime
 
-          with urllib.request.urlopen("https://api.open-meteo.com/v1/forecast?latitude=51.5074&longitude=-0.1278&current=temperature_2m,relative_humidity_2m,wind_speed_10m,weather_code&timezone=Europe/London") as r:
-              w = json.loads(r.read())["current"]
+with urllib.request.urlopen("https://api.open-meteo.com/v1/forecast?latitude=51.5074&longitude=-0.1278&current=temperature_2m,relative_humidity_2m,wind_speed_10m,weather_code&timezone=Europe/London") as r:
+    w = json.loads(r.read())["current"]
 
-          codes = {0:"Clear sky",1:"Mainly clear",2:"Partly cloudy",3:"Overcast",45:"Fog",48:"Fog",51:"Light drizzle",53:"Drizzle",55:"Heavy drizzle",61:"Light rain",63:"Rain",65:"Heavy rain",71:"Light snow",73:"Snow",75:"Heavy snow",80:"Rain showers",81:"Rain showers",82:"Heavy showers",95:"Thunderstorm"}
-          cond = codes.get(w["weather_code"], f"Code {w['weather_code']}")
-          date = datetime.now().strftime("%A, %d %B %Y")
-          body = f"Good morning!\n\nLondon Weather - {date}:\n\n  Temperature: {w['temperature_2m']}C\n  Conditions:  {cond}\n  Humidity:    {w['relative_humidity_2m']}%\n  Wind:        {w['wind_speed_10m']} km/h\n\nHave a great day!"
+codes = {0:"Clear sky",1:"Mainly clear",2:"Partly cloudy",3:"Overcast",45:"Fog",48:"Fog",51:"Light drizzle",53:"Drizzle",55:"Heavy drizzle",61:"Light rain",63:"Rain",65:"Heavy rain",71:"Light snow",73:"Snow",75:"Heavy snow",80:"Rain showers",81:"Rain showers",82:"Heavy showers",95:"Thunderstorm"}
+cond = codes.get(w["weather_code"], "Unknown")
+date = datetime.now().strftime("%A, %d %B %Y")
+body = f"Good morning!\n\nLondon Weather - {date}:\n\n  Temperature: {w['temperature_2m']}C\n  Conditions:  {cond}\n  Humidity:    {w['relative_humidity_2m']}%\n  Wind:        {w['wind_speed_10m']} km/h\n\nHave a great day!"
 
-          payload = json.dumps({"from":"onboarding@resend.dev","to":"bpbenji.pincus@gmail.com","subject":f"Daily Weather - London ({date})","text":body}).encode()
-          req = urllib.request.Request("https://api.resend.com/emails",data=payload,headers={"Authorization":f"Bearer {os.environ['RESEND_API_KEY']}","Content-Type":"application/json"},method="POST")
-          with urllib.request.urlopen(req) as r:
-              print("Sent:", json.loads(r.read()).get("id"))
-          PYEOF
+payload = json.dumps({"from":"onboarding@resend.dev","to":"bpbenji.pincus@gmail.com","subject":f"Daily Weather - London ({date})","text":body}).encode()
+req = urllib.request.Request("https://api.resend.com/emails",data=payload,headers={"Authorization":f"Bearer {os.environ['RESEND_API_KEY']}","Content-Type":"application/json"},method="POST")
+with urllib.request.urlopen(req) as r:
+    resp = json.loads(r.read())
+    print("Email sent! ID:", resp.get("id"))
+PYEOF
+          python3 weather.py
